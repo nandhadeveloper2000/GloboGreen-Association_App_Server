@@ -57,10 +57,8 @@ app.use(cookieParser());
 const allowedOrigins = [
   process.env.FRONTEND_URL, // ex: http://localhost:5173 or production domain
   "http://localhost:5173",
-    "https://tnma-frontend-site.storage.googleapis.com",
-    "https://storage.googleapis.com",
-    "https://tntechconnectcuddalore.netlify.app",
     "http://localhost:4173",
+    "https://globo-green-association-admin-lchndq6wg.vercel.app"
 ].filter(Boolean);
 
 app.use(
