@@ -55,7 +55,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:4173",
-  "https://globo-green-association-admin-lchndq6wg.vercel.app",
+  "https://globo-green-association-admin.vercel.app/",
 ].filter(Boolean);
 
 const corsOptions = {
