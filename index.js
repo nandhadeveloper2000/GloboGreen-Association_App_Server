@@ -25,14 +25,13 @@ const seriesRoutes = require("./src/routes/series.routes");
 const modelRoutes = require("./src/routes/model.routes");
 const sparePartsRoutes = require("./src/routes/spareParts.routes");
 
-
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const NODE_ENV = process.env.NODE_ENV || "development";
 const isDev = NODE_ENV !== "production";
 
 /* -----------------------------
- * Security & Parsers (before routes)
+ * Security & Parsers
  * ----------------------------- */
 app.set("trust proxy", 1);
 
@@ -50,38 +49,37 @@ app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(cookieParser());
 
 /* -----------------------------
- * CORS (before routes)
- * - Dev: allow all
- * - Prod: allow only specific origins
+ * CORS
  * ----------------------------- */
 const allowedOrigins = [
-  process.env.FRONTEND_URL, // ex: http://localhost:5173 or production domain
+  process.env.FRONTEND_URL,
   "http://localhost:5173",
-    "http://localhost:4173",
-    "https://globo-green-association-admin-lchndq6wg.vercel.app"
+  "http://localhost:4173",
+  "https://globo-green-association-admin-lchndq6wg.vercel.app",
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin: isDev
-      ? true
-      : function (origin, cb) {
-          // allow server-to-server / curl / postman (no origin)
-          if (!origin) return cb(null, true);
+const corsOptions = {
+  origin(origin, callback) {
+    // allow server-to-server / postman / curl
+    if (!origin) return callback(null, true);
 
-          if (allowedOrigins.includes(origin)) return cb(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, origin);
+    }
 
-          return cb(new Error(`Not allowed by CORS: ${origin}`));
-        },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    optionsSuccessStatus: 204,
-  })
-);
+    return callback(new Error(`CORS not allowed for origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 /* -----------------------------
- * Routes
+ * Health
  * ----------------------------- */
 app.get("/", (_req, res) => res.json({ ok: true, name: "Association API" }));
 
@@ -89,20 +87,20 @@ app.get("/health", (_req, res) =>
   res.json({ ok: true, env: NODE_ENV, uptime: process.uptime() })
 );
 
+/* -----------------------------
+ * Routes
+ * ----------------------------- */
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/associations", associationRouter);
 
-// upload routes (keep if frontend depends on both)
+// upload routes
 app.use("/api/upload", uploadRouter);
 app.use("/api/uploadImag", uploadRouter);
 
 app.use("/api/employee", employeeRoutes);
 app.use("/api/qr", qrRoutes);
-
-// IMPORTANT: plural "subscriptions" must match your frontend constants
 app.use("/api/subscriptions", subscriptionRoutes);
-
 app.use("/api/locations", locationRoutes);
 app.use("/api/kyc", kycRoutes);
 app.use("/api/admin", adminRoutes);
@@ -110,8 +108,9 @@ app.use("/api/brand", brandRoutes);
 app.use("/api/series", seriesRoutes);
 app.use("/api/model", modelRoutes);
 app.use("/api/spareparts", sparePartsRoutes);
+
 /* -----------------------------
- * 404 handler (after routes)
+ * 404 handler
  * ----------------------------- */
 app.use((req, res) => {
   res.status(404).json({
@@ -122,7 +121,7 @@ app.use((req, res) => {
 });
 
 /* -----------------------------
- * Error handler (last)
+ * Error handler
  * ----------------------------- */
 app.use((err, _req, res, _next) => {
   console.error("🔥 Server Error:", err);
@@ -135,7 +134,7 @@ app.use((err, _req, res, _next) => {
 });
 
 /* -----------------------------
- * Admin seeding (2 logins)
+ * Admin seeding
  * ----------------------------- */
 async function ensureDefaultAdmins() {
   const seeds = [
@@ -158,7 +157,6 @@ async function ensureDefaultAdmins() {
 
     const exist = await UserModel.findOne({ email }).lean();
     if (exist) {
-      // keep role correct if already exists
       if (exist.role !== seed.role) {
         await UserModel.updateOne(
           { email },
@@ -175,7 +173,7 @@ async function ensureDefaultAdmins() {
       name: seed.name,
       email,
       password: hash,
-      role: seed.role, // ADMIN / MASTER_ADMIN
+      role: seed.role,
       provider: "local",
       verify_email: true,
       status: "Active",
@@ -195,7 +193,7 @@ connectDB()
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`✅ Server running on http://localhost:${PORT}`);
       console.log(`✅ ENV: ${NODE_ENV}`);
-      if (!isDev) console.log(`✅ Allowed Origins:`, allowedOrigins);
+      console.log(`✅ Allowed Origins:`, allowedOrigins);
     });
   })
   .catch((err) => {
